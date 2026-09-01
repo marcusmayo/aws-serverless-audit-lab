@@ -21,17 +21,7 @@ An evidence-first reference service for reviewing AWS serverless and Infrastruct
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A["API Gateway<br/>POST /audit-jobs"] --> B["Create Job<br/>Lambda"]
-    B --> C["DynamoDB job +<br/>presigned S3 upload"]
-    C --> D["S3 ObjectCreated<br/>EventBridge"]
-    D --> E["SQS intake<br/>+ DLQ"]
-    E --> F["Starter Lambda →<br/>Step Functions Standard"]
-    F --> G["Deterministic<br/>audit Lambdas"]
-    G --> H["S3 JSON / Markdown / SARIF<br/>+ DynamoDB status"]
-    H --> I["DynamoDB Stream →<br/>EventBridge → SNS/SQS"]
-```
+![AWS Serverless Audit Lab architecture](docs/architecture.svg)
 
 Submitted templates are parsed as data and are never executed. The end-to-end delivery contract is **at least once**. Duplicate delivery is expected; consumers must be idempotent. A DLQ is a quarantine, not an automatic replay loop.
 
@@ -60,6 +50,7 @@ make audit
 
 4. When Codespaces reports that port `8000` is available, select **Open in Browser**. If the prompt is dismissed, open the **Ports** panel, find port `8000`, and select its globe icon.
 5. Paste or upload a SAM/CloudFormation YAML or JSON template and select **Run static audit**.
+6. Select **Run oracle suite** to compare all deliberately flawed fixtures with their strict, repository-owned expectations.
 
 The preview parses submitted templates as data; it does not execute or deploy them. Its port is private by default. Results prove only deterministic static checks: LocalStack IAM remains **UNVERIFIED** and real AWS remains **NOT_RUN**. Stop the preview with `Ctrl+C`.
 
@@ -69,8 +60,11 @@ To exercise the repository from the same Codespace:
 make test
 make lint
 make audit
+make oracle
 make validate  # requires the SAM CLI included in the dev container
 ```
+
+An oracle result of **MATCH** means the auditor returned the expected decision, rule IDs, severities, paths, and evidence boundaries. It does **not** mean the flawed fixture is safe or that AWS behavior was exercised. Oracle manifests reject duplicate keys, unknown assertion fields, malformed rule IDs, and client-supplied expectations.
 
 Run the optional LocalStack lane only when `LOCALSTACK_AUTH_TOKEN` is configured:
 
@@ -94,6 +88,15 @@ python -m audit.audit_template task_cases/T02_retry_semantics/template.yaml --fo
 ```
 
 The command exits non-zero when it finds a `CRITICAL` or `HIGH` issue, making it usable as a grading gate. Each finding includes severity, evidence path, AWS behavior, impact, remediation, and a verification step.
+
+Run the independent regression oracle from a terminal:
+
+```bash
+python -m audit.oracle
+python -m audit.oracle --format json
+```
+
+The oracle exits non-zero on a **MISMATCH** and exits `2` when a trusted expectation manifest is invalid.
 
 ## Audit corpus
 
@@ -129,7 +132,7 @@ The exact review is recorded in [source-project review](docs/source-project-revi
 ## Repository layout
 
 ```text
-audit/                 deterministic audit CLI and rubric
+audit/                 deterministic audit CLI, rubric, and regression oracle
 docs/                  semantics, fidelity, cost, and methodology
 src/                    Lambda handlers
 statemachines/          Amazon States Language definition

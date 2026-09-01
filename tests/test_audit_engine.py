@@ -23,10 +23,13 @@ def test_reference_template_has_no_blocking_findings() -> None:
 
 def test_each_corpus_case_contains_expected_findings() -> None:
     for case in sorted((ROOT / "task_cases").iterdir()):
-        expected = yaml.safe_load((case / "expected.yaml").read_text(encoding="utf-8"))
+        manifest = yaml.safe_load((case / "expected.yaml").read_text(encoding="utf-8"))
+        expected = manifest["expect"]
         report = run_audit(case / "template.yaml")
         assert report["decision"] == expected["decision"]
-        assert set(expected["required_rule_ids"]).issubset(_ids(report))
+        assert {
+            finding["rule_id"] for finding in expected["required_findings"]
+        }.issubset(_ids(report))
 
 
 def test_invalid_template_fails_closed() -> None:

@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title description">
+  <title id="title">AWS Serverless Audit Lab architecture</title>
+  <desc id="description">An authorized API request creates an audit job and presigned upload. S3 and EventBridge route the uploaded template through SQS and Step Functions to deterministic audit tasks. Reports and status are stored, then status events are published through EventBridge, SNS, and SQS.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d8ff3e"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="4" dy="5" stdDeviation="0" flood-color="#050b09" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="650" rx="18" fill="#13231f"/>
+  <path d="M0 44 H1200 M0 606 H1200" stroke="#2c413b" stroke-width="1"/>
+  <circle cx="35" cy="23" r="5" fill="#d8ff3e"/>
+  <text x="52" y="29" fill="#d8ff3e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700" letter-spacing="2">AWS SERVERLESS AUDIT LAB · EVENT FLOW</text>
+
+  <g fill="none" stroke="#d8ff3e" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M220 151 H272"/>
+    <path d="M452 151 H504"/>
+    <path d="M684 151 H736"/>
+    <path d="M916 151 H968"/>
+    <path d="M1058 204 V283"/>
+    <path d="M968 345 H916"/>
+    <path d="M736 345 H684"/>
+    <path d="M504 345 H452"/>
+    <path d="M272 345 H220"/>
+  </g>
+
+  <g filter="url(#shadow)" font-family="Inter, Arial, sans-serif">
+    <g transform="translate(40 98)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#d8ff3e" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">01 · ENTRY</text>
+      <text x="18" y="58" fill="#13231f" font-size="17" font-weight="750">API Gateway</text>
+      <text x="18" y="82" fill="#65736f" font-size="13">POST /audit-jobs</text>
+    </g>
+    <g transform="translate(272 98)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">02 · IDEMPOTENCY</text>
+      <text x="18" y="58" fill="#13231f" font-size="17" font-weight="750">Create Job</text>
+      <text x="18" y="82" fill="#65736f" font-size="13">Lambda</text>
+    </g>
+    <g transform="translate(504 98)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">03 · INTAKE</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">DynamoDB job</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">presigned S3 upload</text>
+    </g>
+    <g transform="translate(736 98)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">04 · ROUTING</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">S3 ObjectCreated</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">EventBridge</text>
+    </g>
+    <g transform="translate(968 98)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">05 · BUFFER</text>
+      <text x="18" y="58" fill="#13231f" font-size="17" font-weight="750">SQS intake</text>
+      <text x="18" y="82" fill="#65736f" font-size="13">encrypted DLQ</text>
+    </g>
+
+    <g transform="translate(968 292)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">06 · ORCHESTRATE</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">Starter Lambda</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">Standard Step Functions</text>
+    </g>
+    <g transform="translate(736 292)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#d8ff3e" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">07 · AUDIT</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">Deterministic audit</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">parse data, never execute</text>
+    </g>
+    <g transform="translate(504 292)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">08 · EVIDENCE</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">S3 reports</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">JSON · Markdown · SARIF</text>
+    </g>
+    <g transform="translate(272 292)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">09 · STATUS</text>
+      <text x="18" y="56" fill="#13231f" font-size="16" font-weight="750">DynamoDB Stream</text>
+      <text x="18" y="80" fill="#65736f" font-size="12">EventBridge event</text>
+    </g>
+    <g transform="translate(40 292)">
+      <rect width="180" height="106" rx="10" fill="#fffdf7" stroke="#50655f" stroke-width="2"/>
+      <text x="18" y="29" fill="#0d655a" font-size="11" font-weight="800">10 · NOTIFY</text>
+      <text x="18" y="58" fill="#13231f" font-size="17" font-weight="750">SNS + SQS</text>
+      <text x="18" y="82" fill="#65736f" font-size="13">durable subscriber</text>
+    </g>
+  </g>
+
+  <g transform="translate(40 470)" font-family="Inter, Arial, sans-serif">
+    <rect width="1108" height="96" rx="10" fill="#0c1a16" stroke="#2c413b"/>
+    <text x="22" y="31" fill="#d8ff3e" font-size="12" font-weight="800" letter-spacing="1.5">SYSTEM INVARIANTS</text>
+    <text x="22" y="60" fill="#bdcac6" font-size="13">At-least-once delivery · deterministic identifiers · bounded retries · least-privilege IAM · content-addressed reports</text>
+    <text x="22" y="81" fill="#bdcac6" font-size="13">Static evidence VERIFIED · LocalStack IAM UNVERIFIED · real AWS NOT_RUN until an authorized canary executes</text>
+  </g>
+  <text x="40" y="628" fill="#7e918b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">Committed SVG avoids GitHub rich-display renderer dependencies.</text>
+</svg>

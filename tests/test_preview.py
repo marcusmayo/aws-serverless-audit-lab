@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from preview.app import MAX_TEMPLATE_BYTES, audit_payload
+from audit.oracle import run_suite
+from preview.app import CASE_ROOT, MAX_TEMPLATE_BYTES, audit_payload
 
 
 def test_preview_audits_template_without_deploying() -> None:
@@ -30,3 +31,10 @@ def test_preview_rejects_invalid_payload(payload: object) -> None:
 def test_preview_enforces_size_limit() -> None:
     with pytest.raises(ValueError, match="512 KiB"):
         audit_payload({"template": "x" * (MAX_TEMPLATE_BYTES + 1)})
+
+
+def test_preview_oracle_uses_repository_owned_cases() -> None:
+    suite = run_suite(CASE_ROOT)
+
+    assert suite["verdict"] == "MATCH"
+    assert suite["matched_count"] == 3

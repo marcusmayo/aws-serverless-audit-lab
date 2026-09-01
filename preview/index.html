@@ -57,6 +57,31 @@
       </div>
       <p id="error" class="error hidden" role="alert"></p>
     </section>
+
+    <section class="oracle-suite" aria-labelledby="oracle-heading">
+      <div class="panel-heading">
+        <div><span class="step">03</span><h2 id="oracle-heading">Regression oracle</h2></div>
+        <span id="oracle-status" class="status idle" tabindex="-1">NOT RUN</span>
+      </div>
+      <div class="oracle-intro">
+        <div>
+          <p class="oracle-kicker">INDEPENDENT EXPECTATION CHECK</p>
+          <h3>Does the auditor still detect what each fixture was designed to prove?</h3>
+          <p>The oracle compares decisions, rule IDs, severities, evidence paths, and evidence boundaries with strict repository-owned manifests. Browser input cannot change the expected answers.</p>
+        </div>
+        <button id="run-oracle" type="button">Run oracle suite <span>→</span></button>
+      </div>
+      <div id="oracle-result" class="oracle-result hidden">
+        <div class="oracle-score">
+          <span>Suite verdict</span>
+          <strong id="oracle-verdict">—</strong>
+          <small><span id="oracle-matched">—</span>/<span id="oracle-total">—</span> cases matched</small>
+        </div>
+        <div id="oracle-cases" class="oracle-cases"></div>
+        <p class="oracle-boundary"><strong>Claim boundary:</strong> ORACLE MATCH means the auditor detected the intended signals. It does not mean an intentionally flawed template is safe, deployed, or verified in AWS. LocalStack IAM remains UNVERIFIED and real AWS remains NOT_RUN.</p>
+      </div>
+      <p id="oracle-error" class="error hidden" role="alert"></p>
+    </section>
   </main>
 
   <footer>Deterministic review surface · No AWS credentials required · No submitted code execution</footer>

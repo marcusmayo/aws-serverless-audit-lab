@@ -8,9 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from audit.audit_template import audit_text
+from audit.oracle import OracleDefinitionError, list_cases, run_suite
 
 ASSET_DIR = Path(__file__).parent
+CASE_ROOT = ASSET_DIR.parent / "task_cases"
 MAX_TEMPLATE_BYTES = 512 * 1024
+MAX_ORACLE_REQUEST_BYTES = 4096
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -36,7 +39,7 @@ def audit_payload(payload: Any) -> dict[str, Any]:
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
-    server_version = "AuditPreview/1.0"
+    server_version = "AuditPreview/1.1"
 
     def _security_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -58,6 +61,12 @@ class PreviewHandler(BaseHTTPRequestHandler):
         if self.path == "/api/health":
             self._send_json(HTTPStatus.OK, {"status": "ok"})
             return
+        if self.path == "/api/oracle/cases":
+            try:
+                self._send_json(HTTPStatus.OK, {"cases": list_cases(CASE_ROOT)})
+            except OracleDefinitionError as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+            return
         asset = ASSETS.get(self.path)
         if asset is None:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
@@ -72,19 +81,38 @@ class PreviewHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/api/audit":
+        if self.path not in {"/api/audit", "/api/oracle/run"}:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            return
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
+            self._send_json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                {"error": "Content-Type must be application/json."},
+            )
             return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
-            if content_length <= 0 or content_length > MAX_TEMPLATE_BYTES + 4096:
+            request_limit = (
+                MAX_ORACLE_REQUEST_BYTES
+                if self.path == "/api/oracle/run"
+                else MAX_TEMPLATE_BYTES + 4096
+            )
+            if content_length <= 0 or content_length > request_limit:
                 raise ValueError("request size is invalid or exceeds the preview limit.")
             payload = json.loads(self.rfile.read(content_length))
-            report = audit_payload(payload)
+            if self.path == "/api/oracle/run":
+                if payload != {}:
+                    raise ValueError("oracle run accepts only an empty JSON object.")
+                response = run_suite(CASE_ROOT)
+            else:
+                response = audit_payload(payload)
+        except OracleDefinitionError as exc:
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+            return
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
-        self._send_json(HTTPStatus.OK, report)
+        self._send_json(HTTPStatus.OK, response)
 
     def log_message(self, format: str, *args: object) -> None:
         # Keep standard request metadata while never logging submitted template bodies.

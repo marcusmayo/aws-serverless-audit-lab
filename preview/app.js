@@ -28,6 +28,11 @@ const report = document.querySelector("#report");
 const error = document.querySelector("#error");
 const status = document.querySelector("#status");
 const findings = document.querySelector("#findings");
+const runOracle = document.querySelector("#run-oracle");
+const oracleStatus = document.querySelector("#oracle-status");
+const oracleResult = document.querySelector("#oracle-result");
+const oracleError = document.querySelector("#oracle-error");
+const oracleCases = document.querySelector("#oracle-cases");
 
 template.value = sample;
 
@@ -60,12 +65,43 @@ run.addEventListener("click", async () => {
   }
 });
 
+runOracle.addEventListener("click", async () => {
+  setOracleBusy(true);
+  try {
+    const response = await fetch("/api/oracle/run", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: "{}",
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Oracle request failed.");
+    renderOracleSuite(payload);
+  } catch (requestError) {
+    oracleResult.classList.add("hidden");
+    oracleError.textContent = requestError.message;
+    oracleError.classList.remove("hidden");
+    oracleStatus.textContent = "ERROR";
+    oracleStatus.className = "status fail";
+  } finally {
+    setOracleBusy(false);
+  }
+});
+
 function setBusy(isBusy) {
   run.disabled = isBusy;
   run.firstChild.textContent = isBusy ? "Auditing… " : "Run static audit ";
   if (isBusy) {
     status.textContent = "RUNNING";
     status.className = "status running";
+  }
+}
+
+function setOracleBusy(isBusy) {
+  runOracle.disabled = isBusy;
+  runOracle.firstChild.textContent = isBusy ? "Comparing… " : "Run oracle suite ";
+  if (isBusy) {
+    oracleStatus.textContent = "RUNNING";
+    oracleStatus.className = "status running";
   }
 }
 
@@ -122,4 +158,64 @@ function renderReport(data) {
     card.append(top, title, path, detail, remedy);
     findings.append(card);
   });
+}
+
+function renderOracleSuite(data) {
+  oracleError.classList.add("hidden");
+  oracleResult.classList.remove("hidden");
+  document.querySelector("#oracle-verdict").textContent = data.verdict;
+  document.querySelector("#oracle-matched").textContent = data.matched_count;
+  document.querySelector("#oracle-total").textContent = data.case_count;
+  oracleStatus.textContent = data.verdict;
+  oracleStatus.className = `status ${data.verdict === "MATCH" ? "pass" : "fail"}`;
+  oracleCases.replaceChildren();
+
+  data.cases.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = `oracle-case ${item.oracle.verdict === "MATCH" ? "matched" : "mismatched"}`;
+
+    const top = document.createElement("div");
+    top.className = "oracle-case-top";
+    const caseId = document.createElement("code");
+    caseId.textContent = item.case_id;
+    const verdict = document.createElement("span");
+    verdict.className = `status ${item.oracle.verdict === "MATCH" ? "pass" : "fail"}`;
+    verdict.textContent = item.oracle.verdict;
+    top.append(caseId, verdict);
+
+    const title = document.createElement("h3");
+    title.textContent = item.title;
+    const summary = document.createElement("p");
+    summary.textContent = `Audit decision ${item.report.decision} · ${item.oracle.summary.matched}/${item.oracle.summary.total} oracle checks matched`;
+
+    const checks = document.createElement("ul");
+    checks.className = "oracle-checks";
+    item.oracle.checks.forEach((check) => {
+      const row = document.createElement("li");
+      const mark = document.createElement("span");
+      mark.textContent = check.status === "MATCH" ? "✓" : "×";
+      mark.className = check.status === "MATCH" ? "check-match" : "check-mismatch";
+      const label = document.createElement("span");
+      label.textContent = check.check_id.replaceAll("_", " ");
+      row.append(mark, label);
+      checks.append(row);
+    });
+
+    const provenance = document.createElement("p");
+    provenance.className = "oracle-provenance";
+    provenance.textContent = `manifest sha256 · ${item.manifest_sha256.slice(0, 16)}…`;
+
+    const inspect = document.createElement("button");
+    inspect.type = "button";
+    inspect.className = "inspect-button";
+    inspect.textContent = "Inspect audit findings";
+    inspect.addEventListener("click", () => {
+      renderReport(item.report);
+      document.querySelector("#results-heading").scrollIntoView({behavior: "smooth", block: "start"});
+    });
+
+    card.append(top, title, summary, checks, provenance, inspect);
+    oracleCases.append(card);
+  });
+  oracleStatus.focus();
 }

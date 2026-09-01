@@ -1,4 +1,4 @@
-.PHONY: test lint audit validate preview localstack-up localstack-down
+.PHONY: test lint audit oracle validate preview localstack-up localstack-down
 
 test:
 	pytest --cov=audit --cov=src --cov-report=term-missing
@@ -8,6 +8,9 @@ lint:
 
 audit:
 	python -m audit.audit_template template.yaml --format markdown
+
+oracle:
+	python -m audit.oracle
 
 validate:
 	cfn-lint template.yaml

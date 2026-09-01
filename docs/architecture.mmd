@@ -1,0 +1,9 @@
+flowchart TD
+    A["API Gateway: POST audit jobs"] --> B["Create Job Lambda"]
+    B --> C["DynamoDB job and presigned S3 upload"]
+    C --> D["S3 ObjectCreated to EventBridge"]
+    D --> E["SQS intake and DLQ"]
+    E --> F["Starter Lambda to Step Functions Standard"]
+    F --> G["Deterministic audit Lambdas"]
+    G --> H["S3 JSON, Markdown, SARIF and DynamoDB status"]
+    H --> I["DynamoDB Stream to EventBridge to SNS and SQS"]

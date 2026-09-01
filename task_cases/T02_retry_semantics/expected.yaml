@@ -1,6 +1,25 @@
-decision: FAIL
-required_rule_ids: [SQS001, SQS002, SQS003]
-timing:
-  function_timeout_seconds: 20
-  minimum_visibility_seconds: 120
-  configured_visibility_seconds: 30
+schema_version: "1.0.0"
+case_id: T02_retry_semantics
+title: SQS retry and poison-message review
+expect:
+  decision: FAIL
+  required_findings:
+    - rule_id: SQS001
+      severity: HIGH
+      path: Resources.WholeBatchConsumer.Properties.Events.Queue.Properties
+    - rule_id: SQS002
+      severity: HIGH
+      path: Resources.WorkQueue.Properties
+    - rule_id: SQS003
+      severity: HIGH
+      path: Resources.WorkQueue.Properties.VisibilityTimeout
+  forbidden_rule_ids: []
+  evidence_boundary:
+    static: VERIFIED
+    localstack_iam: UNVERIFIED
+    real_aws: NOT_RUN
+context:
+  timing:
+    function_timeout_seconds: 20
+    minimum_visibility_seconds: 120
+    configured_visibility_seconds: 30

@@ -48,6 +48,9 @@ jobs:
       - name: Audit the reference architecture
         run: python -m audit.audit_template template.yaml --format markdown
 
+      - name: Run deterministic regression oracle
+        run: python -m audit.oracle
+
       - name: Upload coverage evidence
         uses: actions/upload-artifact@v4
         with:

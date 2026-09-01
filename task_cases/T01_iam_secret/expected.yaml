@@ -1,6 +1,25 @@
-decision: FAIL
-required_rule_ids: [IAM001, IAM002, SEC001, SEC002]
-fidelity:
-  static: VERIFIED
-  localstack_iam: UNVERIFIED
-  real_aws: NOT_RUN
+schema_version: "1.0.0"
+case_id: T01_iam_secret
+title: IAM and secret boundary review
+expect:
+  decision: FAIL
+  required_findings:
+    - rule_id: IAM001
+      severity: CRITICAL
+      path: Resources.UnsafeFunction.Properties.Policies[0].Statement[0]
+    - rule_id: IAM002
+      severity: HIGH
+      path: Resources.UnsafeFunction.Properties.Policies[0].Statement[0]
+    - rule_id: SEC001
+      severity: CRITICAL
+      path: Parameters.VendorSecretKey.Default
+    - rule_id: SEC002
+      severity: HIGH
+      path: Resources.UnsafeFunction.Properties.Environment.Variables.API_TOKEN
+  forbidden_rule_ids: []
+  evidence_boundary:
+    static: VERIFIED
+    localstack_iam: UNVERIFIED
+    real_aws: NOT_RUN
+context:
+  purpose: Detect wildcard IAM and committed credential-shaped values.

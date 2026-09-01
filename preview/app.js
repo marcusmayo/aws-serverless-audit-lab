@@ -33,8 +33,15 @@ const oracleStatus = document.querySelector("#oracle-status");
 const oracleResult = document.querySelector("#oracle-result");
 const oracleError = document.querySelector("#oracle-error");
 const oracleCases = document.querySelector("#oracle-cases");
+const runDemo = document.querySelector("#run-demo");
+const apiState = document.querySelector("#api-state");
+const fixtureCount = document.querySelector("#fixture-count");
+const activity = document.querySelector("#activity");
+const auditFlow = document.querySelector("#audit-flow");
+let demoRunning = false;
 
 template.value = sample;
+initializePreview();
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
@@ -47,8 +54,31 @@ fileInput.addEventListener("change", async () => {
   source.value = file.name.slice(0, 200);
 });
 
-run.addEventListener("click", async () => {
+run.addEventListener("click", runAudit);
+runOracle.addEventListener("click", runOracleSuite);
+runDemo.addEventListener("click", runPortfolioDemo);
+
+async function initializePreview() {
+  try {
+    const response = await fetch("/api/health", {cache: "no-store"});
+    const payload = await response.json();
+    if (!response.ok || payload.status !== "ok") throw new Error(payload.error || "Health check failed.");
+    apiState.textContent = "CONNECTED";
+    apiState.className = "connected";
+    fixtureCount.textContent = String(payload.oracle_case_count);
+    activity.textContent = "Service connected. The supplied sample is ready for a deterministic review.";
+    syncDemoButton();
+  } catch (requestError) {
+    apiState.textContent = "OFFLINE";
+    apiState.className = "offline";
+    activity.textContent = "Preview API unavailable. Run `make preview-start`, then refresh this page.";
+  }
+}
+
+async function runAudit() {
   setBusy(true);
+  auditFlow.dataset.state = "running";
+  activity.textContent = "Submitting the template as data to the deterministic audit engine…";
   try {
     const response = await fetch("/api/audit", {
       method: "POST",
@@ -58,15 +88,22 @@ run.addEventListener("click", async () => {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Audit request failed.");
     renderReport(payload);
+    auditFlow.dataset.state = "complete";
+    activity.textContent = `Audit complete: ${payload.decision}, score ${payload.score}/100, ${payload.finding_count} findings.`;
+    return true;
   } catch (requestError) {
     showError(requestError.message);
+    auditFlow.dataset.state = "error";
+    activity.textContent = `Audit failed: ${requestError.message}`;
+    return false;
   } finally {
     setBusy(false);
   }
-});
+}
 
-runOracle.addEventListener("click", async () => {
+async function runOracleSuite() {
   setOracleBusy(true);
+  activity.textContent = `Comparing ${fixtureCount.textContent} audit fixtures with repository-owned expectations…`;
   try {
     const response = await fetch("/api/oracle/run", {
       method: "POST",
@@ -76,19 +113,36 @@ runOracle.addEventListener("click", async () => {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Oracle request failed.");
     renderOracleSuite(payload);
+    activity.textContent = `Oracle ${payload.verdict}: ${payload.matched_count}/${payload.case_count} cases matched expected evidence.`;
+    return true;
   } catch (requestError) {
     oracleResult.classList.add("hidden");
     oracleError.textContent = requestError.message;
     oracleError.classList.remove("hidden");
     oracleStatus.textContent = "ERROR";
     oracleStatus.className = "status fail";
+    activity.textContent = `Oracle failed: ${requestError.message}`;
+    return false;
   } finally {
     setOracleBusy(false);
   }
-});
+}
+
+async function runPortfolioDemo() {
+  demoRunning = true;
+  syncDemoButton();
+  template.value = sample;
+  source.value = "portfolio-demo.yaml";
+  const audited = await runAudit();
+  if (audited) await runOracleSuite();
+  document.querySelector("#results-heading").scrollIntoView({behavior: "smooth", block: "start"});
+  demoRunning = false;
+  syncDemoButton();
+}
 
 function setBusy(isBusy) {
   run.disabled = isBusy;
+  syncDemoButton();
   run.firstChild.textContent = isBusy ? "Auditing… " : "Run static audit ";
   if (isBusy) {
     status.textContent = "RUNNING";
@@ -98,11 +152,16 @@ function setBusy(isBusy) {
 
 function setOracleBusy(isBusy) {
   runOracle.disabled = isBusy;
+  syncDemoButton();
   runOracle.firstChild.textContent = isBusy ? "Comparing… " : "Run oracle suite ";
   if (isBusy) {
     oracleStatus.textContent = "RUNNING";
     oracleStatus.className = "status running";
   }
+}
+
+function syncDemoButton() {
+  runDemo.disabled = demoRunning || run.disabled || runOracle.disabled || apiState.textContent !== "CONNECTED";
 }
 
 function showError(message) {

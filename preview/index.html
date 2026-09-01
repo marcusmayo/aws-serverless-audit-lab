@@ -15,6 +15,20 @@
   </header>
 
   <main>
+    <aside class="runtime-strip" aria-label="Live preview status">
+      <div class="runtime-activity">
+        <span class="live-label"><i aria-hidden="true"></i> LIVE PREVIEW</span>
+        <p id="activity" aria-live="polite">Connecting to the local audit service…</p>
+      </div>
+      <dl class="runtime-facts">
+        <div><dt>API</dt><dd id="api-state" class="connecting">CONNECTING</dd></div>
+        <div><dt>Engine</dt><dd>DETERMINISTIC</dd></div>
+        <div><dt>Oracle fixtures</dt><dd id="fixture-count">—</dd></div>
+        <div><dt>Evidence mode</dt><dd>STATIC ONLY</dd></div>
+      </dl>
+      <button id="run-demo" class="demo-button" type="button" disabled>Run portfolio demo <span>→</span></button>
+    </aside>
+
     <section class="workspace" aria-labelledby="template-heading">
       <div class="panel-heading">
         <div>
@@ -31,6 +45,9 @@
         <p id="input-note">Maximum 512 KiB. Content is parsed as data and never deployed.</p>
         <button id="run" type="button">Run static audit <span>→</span></button>
       </div>
+      <ol id="audit-flow" class="audit-flow" aria-label="Deterministic audit stages">
+        <li>Parse data</li><li>Evaluate rules</li><li>Score findings</li><li>Render evidence</li>
+      </ol>
     </section>
 
     <section class="results" aria-labelledby="results-heading" aria-live="polite">

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from audit.oracle import run_suite
-from preview.app import CASE_ROOT, MAX_TEMPLATE_BYTES, audit_payload
+from preview.app import ASSETS, CASE_ROOT, MAX_TEMPLATE_BYTES, audit_payload
 
 
 def test_preview_audits_template_without_deploying() -> None:
@@ -38,3 +40,20 @@ def test_preview_oracle_uses_repository_owned_cases() -> None:
 
     assert suite["verdict"] == "MATCH"
     assert suite["matched_count"] == 3
+
+
+def test_visible_preview_assets_are_registered_and_nonempty() -> None:
+    assert set(ASSETS) == {"/", "/app.js", "/styles.css"}
+    for filename, _content_type in ASSETS.values():
+        assert (CASE_ROOT.parent / "preview" / filename).read_text(encoding="utf-8").strip()
+
+
+def test_browser_script_targets_controls_rendered_by_the_frontend() -> None:
+    preview_dir = CASE_ROOT.parent / "preview"
+    html = (preview_dir / "index.html").read_text(encoding="utf-8")
+    javascript = (preview_dir / "app.js").read_text(encoding="utf-8")
+    html_ids = set(re.findall(r'id="([^"]+)"', html))
+    script_ids = set(re.findall(r'querySelector\("#([^"]+)"\)', javascript))
+
+    assert script_ids <= html_ids
+    assert {"activity", "api-state", "fixture-count", "run-demo"} <= html_ids

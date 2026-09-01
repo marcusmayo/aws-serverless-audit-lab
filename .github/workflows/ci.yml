@@ -30,6 +30,9 @@ jobs:
       - name: Install deterministic toolchain
         run: python -m pip install --requirement requirements-dev.txt
 
+      - name: Validate Codespaces configuration
+        run: python -m json.tool .devcontainer/devcontainer.json > /dev/null
+
       - name: Lint Python
         run: ruff check audit preview src tests
 
@@ -58,15 +61,56 @@ jobs:
           VENV_DIR: ${{ runner.temp }}/audit-preview-venv
         run: |
           set -euo pipefail
-          make preview > "${RUNNER_TEMP}/audit-preview.log" 2>&1 &
-          preview_pid=$!
-          trap 'kill "${preview_pid}" 2>/dev/null || true' EXIT
-          curl --retry 10 --retry-all-errors --retry-delay 1 --fail --silent \
-            http://127.0.0.1:8000/api/health
-          curl --fail --silent --header 'Content-Type: application/json' --data '{}' \
-            http://127.0.0.1:8000/api/oracle/run > "${RUNNER_TEMP}/oracle.json"
-          "${VENV_DIR}/bin/python" -c \
-            'import json, os; from pathlib import Path; data = json.loads(Path(os.environ["RUNNER_TEMP"], "oracle.json").read_text()); assert data["verdict"] == "MATCH" and data["matched_count"] == 3'
+          trap 'make preview-stop 2>/dev/null || true' EXIT
+          make preview-start
+          make preview-start
+          "${VENV_DIR}/bin/python" - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+
+          base_url = "http://127.0.0.1:8000"
+
+          def get(path: str) -> tuple[int, str, bytes]:
+              with urlopen(base_url + path, timeout=3) as response:
+                  return response.status, response.headers.get_content_type(), response.read()
+
+          def post(path: str, payload: dict[str, object]) -> dict[str, object]:
+              request = Request(
+                  base_url + path,
+                  data=json.dumps(payload).encode(),
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urlopen(request, timeout=5) as response:
+                  return json.load(response)
+
+          status, content_type, index = get("/")
+          assert status == 200 and content_type == "text/html"
+          assert b"AWS Serverless Audit Lab" in index and b"Run portfolio demo" in index
+          for asset, expected_type in (("/app.js", "text/javascript"), ("/styles.css", "text/css")):
+              asset_status, asset_type, body = get(asset)
+              assert asset_status == 200 and asset_type == expected_type and body
+
+          health = json.loads(get("/api/health")[2])
+          assert health == {
+              "mode": "STATIC_ONLY",
+              "oracle_case_count": 3,
+              "service": "aws-serverless-audit-lab",
+              "status": "ok",
+          }
+          audit = post(
+              "/api/audit",
+              {
+                  "source": "ci-visible-preview.yaml",
+                  "template": Path("task_cases/T01_iam_secret/template.yaml").read_text(),
+              },
+          )
+          assert audit["finding_count"] >= 2
+          assert {finding["rule_id"] for finding in audit["findings"]} >= {"IAM001", "SEC001"}
+          oracle = post("/api/oracle/run", {})
+          assert oracle["verdict"] == "MATCH" and oracle["matched_count"] == 3
+          PY
 
       - name: Upload coverage evidence
         uses: actions/upload-artifact@v4
@@ -74,3 +118,18 @@ jobs:
           name: aws-serverless-audit-lab-coverage
           path: coverage.xml
           retention-days: 14
+
+  codespaces-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and exercise the Codespaces dev container
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            sam --version
+            make preview-status
+            make oracle

@@ -39,7 +39,7 @@ def audit_payload(payload: Any) -> dict[str, Any]:
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
-    server_version = "AuditPreview/1.1"
+    server_version = "AuditPreview/1.2"
 
     def _security_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -59,7 +59,20 @@ class PreviewHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/api/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok"})
+            try:
+                case_count = len(list_cases(CASE_ROOT))
+            except OracleDefinitionError as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
+                return
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "status": "ok",
+                    "service": "aws-serverless-audit-lab",
+                    "mode": "STATIC_ONLY",
+                    "oracle_case_count": case_count,
+                },
+            )
             return
         if self.path == "/api/oracle/cases":
             try:

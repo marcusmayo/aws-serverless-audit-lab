@@ -41,20 +41,37 @@ make audit
 ## Codespaces browser preview
 
 1. On this repository, select **Code → Codespaces → Create codespace on main**.
-2. The dev container installs the deterministic development dependencies automatically.
-3. In the Codespaces terminal, run:
+2. The dev container installs the deterministic development dependencies, starts the browser preview in the background, and opens forwarded port `8000` automatically.
+3. If the browser does not open automatically, run:
 
    ```bash
-   make preview
+   make
    ```
 
-   `make preview` is self-bootstrapping: it creates an isolated `.venv` when needed and installs the pinned runtime dependency before starting the server. This also works in a Codespace that was created before the dev-container configuration was committed.
+   The default `make` target starts an idempotent background preview. `make preview-start` performs the same action explicitly. Both create an isolated `.venv` when needed, install the pinned runtime dependency, wait for the health endpoint, and leave the service running after the terminal prompt returns.
 
 4. When Codespaces reports that port `8000` is available, select **Open in Browser**. If the prompt is dismissed, open the **Ports** panel, find port `8000`, and select its globe icon.
-5. Paste or upload a SAM/CloudFormation YAML or JSON template and select **Run static audit**.
-6. Select **Run oracle suite** to compare all deliberately flawed fixtures with their strict, repository-owned expectations.
+5. Select **Run portfolio demo** to audit the supplied flawed template and run all three regression-oracle cases in one sequence. You can also paste or upload a SAM/CloudFormation YAML or JSON template and select **Run static audit**.
+6. The live status strip shows the API connection, deterministic engine, fixture count, evidence mode, and current operation.
 
-The preview parses submitted templates as data; it does not execute or deploy them. Its port is private by default. Results prove only deterministic static checks: LocalStack IAM remains **UNVERIFIED** and real AWS remains **NOT_RUN**. Stop the preview with `Ctrl+C`.
+An existing Codespace can start the fixed preview without rebuilding:
+
+```bash
+git pull --ff-only origin main
+make preview-start
+```
+
+If that Codespace shows a recovery-mode banner, use **Codespaces: Rebuild Container** after pulling. The corrected dev-container feature name removes that configuration failure. The preview remains usable before the rebuild because its bootstrap is self-contained.
+
+Useful preview lifecycle commands:
+
+```bash
+make preview-status  # verify the background service
+make preview-stop    # stop only the managed preview process
+make preview         # foreground/debug mode; stop with Ctrl+C
+```
+
+The preview parses submitted templates as data; it does not execute or deploy them. Its port is private by default. Results prove only deterministic static checks: LocalStack IAM remains **UNVERIFIED** and real AWS remains **NOT_RUN**. Use `make preview-stop` for the managed background service; `Ctrl+C` stops foreground/debug mode.
 
 To exercise the repository from the same Codespace:
 
@@ -62,7 +79,7 @@ To exercise the repository from the same Codespace:
 make test
 make lint
 make audit
-make oracle
+make oracle   # also ensures the browser preview is running
 make validate  # requires the SAM CLI included in the dev container
 ```
 

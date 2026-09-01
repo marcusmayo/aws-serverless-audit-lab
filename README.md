@@ -76,6 +76,8 @@ git pull --ff-only origin main
 make preview-start
 ```
 
+The bootstrap checks both the environment's Python executable and its `pip` module. If an interrupted or persisted Codespaces `.venv` contains Python but no `pip`, `make preview-start` repairs it automatically before installing the pinned dependencies.
+
 If that Codespace shows a recovery-mode banner, use **Codespaces: Rebuild Container** after pulling. The corrected dev-container feature name removes that configuration failure. The preview remains usable before the rebuild because its bootstrap is self-contained.
 
 Useful preview lifecycle commands:

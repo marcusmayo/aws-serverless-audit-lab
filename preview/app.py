@@ -1,0 +1,110 @@
+from __future__ import annotations
+
+import argparse
+import json
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+from audit.audit_template import audit_text
+
+ASSET_DIR = Path(__file__).parent
+MAX_TEMPLATE_BYTES = 512 * 1024
+ASSETS = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+}
+
+
+def audit_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("Request body must be a JSON object.")
+    template = payload.get("template")
+    source = payload.get("source", "codespaces-preview.yaml")
+    if not isinstance(template, str) or not template.strip():
+        raise ValueError("template must be a non-empty string.")
+    if len(template.encode("utf-8")) > MAX_TEMPLATE_BYTES:
+        raise ValueError("template exceeds the 512 KiB preview limit.")
+    if not isinstance(source, str) or not source or len(source) > 200:
+        raise ValueError("source must be a string between 1 and 200 characters.")
+
+    # Do not resolve DefinitionUri against repository files in the browser preview.
+    isolated_base = ASSET_DIR / "no-external-definitions"
+    return audit_text(template, source=source, base_dir=isolated_base)
+
+
+class PreviewHandler(BaseHTTPRequestHandler):
+    server_version = "AuditPreview/1.0"
+
+    def _security_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+
+    def _send_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
+        body = json.dumps(payload, sort_keys=True).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self._security_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:  # noqa: N802
+        if self.path == "/api/health":
+            self._send_json(HTTPStatus.OK, {"status": "ok"})
+            return
+        asset = ASSETS.get(self.path)
+        if asset is None:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            return
+        filename, content_type = asset
+        body = (ASSET_DIR / filename).read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self._security_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path != "/api/audit":
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            return
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+            if content_length <= 0 or content_length > MAX_TEMPLATE_BYTES + 4096:
+                raise ValueError("request size is invalid or exceeds the preview limit.")
+            payload = json.loads(self.rfile.read(content_length))
+            report = audit_payload(payload)
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            return
+        self._send_json(HTTPStatus.OK, report)
+
+    def log_message(self, format: str, *args: object) -> None:
+        # Keep standard request metadata while never logging submitted template bodies.
+        super().log_message(format, *args)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Serve the local AWS audit browser preview")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args(argv)
+    server = ThreadingHTTPServer((args.host, args.port), PreviewHandler)
+    print(f"Audit preview listening on http://{args.host}:{args.port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopping audit preview.")
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()

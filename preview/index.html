@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A local browser preview for deterministic AWS SAM and CloudFormation audits.">
+  <title>AWS Serverless Audit Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="eyebrow">EVIDENCE-FIRST · STATIC · NON-DEPLOYING</div>
+    <h1>AWS Serverless<br><span>Audit Lab</span></h1>
+    <p>Review a SAM or CloudFormation template for IAM scope, retry semantics, idempotency signals, observability, and cost controls.</p>
+  </header>
+
+  <main>
+    <section class="workspace" aria-labelledby="template-heading">
+      <div class="panel-heading">
+        <div>
+          <span class="step">01</span>
+          <h2 id="template-heading">Template input</h2>
+        </div>
+        <label class="upload">Upload YAML/JSON<input id="file-input" type="file" accept=".yaml,.yml,.json,text/yaml,application/json"></label>
+      </div>
+      <label class="source-label" for="source">Evidence source</label>
+      <input id="source" value="codespaces-preview.yaml" maxlength="200">
+      <label class="sr-only" for="template">SAM or CloudFormation template</label>
+      <textarea id="template" spellcheck="false" aria-describedby="input-note"></textarea>
+      <div class="action-row">
+        <p id="input-note">Maximum 512 KiB. Content is parsed as data and never deployed.</p>
+        <button id="run" type="button">Run static audit <span>→</span></button>
+      </div>
+    </section>
+
+    <section class="results" aria-labelledby="results-heading" aria-live="polite">
+      <div class="panel-heading">
+        <div><span class="step">02</span><h2 id="results-heading">Audit evidence</h2></div>
+        <span id="status" class="status idle">READY</span>
+      </div>
+      <div id="empty" class="empty-state">
+        <div class="radar" aria-hidden="true"><span></span></div>
+        <p>Run the static audit to produce a scored, machine-readable finding set.</p>
+      </div>
+      <div id="report" class="report hidden">
+        <div class="metrics">
+          <article><span>Decision</span><strong id="decision">—</strong></article>
+          <article><span>Score</span><strong><span id="score">—</span><small>/100</small></strong></article>
+          <article><span>Findings</span><strong id="count">—</strong></article>
+        </div>
+        <div class="boundary">
+          <span><i class="verified"></i> Static VERIFIED</span>
+          <span><i class="unknown"></i> LocalStack IAM UNVERIFIED</span>
+          <span><i class="unknown"></i> Real AWS NOT_RUN</span>
+        </div>
+        <div id="findings" class="findings"></div>
+      </div>
+      <p id="error" class="error hidden" role="alert"></p>
+    </section>
+  </main>
+
+  <footer>Deterministic review surface · No AWS credentials required · No submitted code execution</footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>

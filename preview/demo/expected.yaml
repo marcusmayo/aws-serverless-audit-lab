@@ -1,0 +1,29 @@
+schema_version: "1.0.0"
+source: portfolio-demo.yaml
+expect:
+  decision: FAIL
+  score: 16
+  finding_count: 6
+  findings:
+    - rule_id: IAM001
+      severity: CRITICAL
+      path: Resources.Worker.Properties.Policies[0].Statement[0]
+    - rule_id: API001
+      severity: HIGH
+      path: Resources.PublicApi.Properties.Auth
+    - rule_id: IAM002
+      severity: HIGH
+      path: Resources.Worker.Properties.Policies[0].Statement[0]
+    - rule_id: SEC002
+      severity: HIGH
+      path: Resources.Worker.Properties.Environment.Variables.API_TOKEN
+    - rule_id: COST001
+      severity: MEDIUM
+      path: Resources.Worker.Properties
+    - rule_id: OBS001
+      severity: MEDIUM
+      path: Resources.Worker.Properties.Tracing
+  evidence_boundary:
+    static: VERIFIED
+    localstack_iam: UNVERIFIED
+    real_aws: NOT_RUN

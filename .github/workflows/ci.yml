@@ -99,6 +99,19 @@ jobs:
               "service": "aws-serverless-audit-lab",
               "status": "ok",
           }
+          demo = json.loads(get("/api/demo")[2])
+          assert demo["source"] == "portfolio-demo.yaml"
+          assert demo["report"]["decision"] == "FAIL"
+          assert demo["report"]["score"] == 16
+          assert demo["report"]["finding_count"] == 6
+          assert [finding["rule_id"] for finding in demo["report"]["findings"]] == [
+              "IAM001",
+              "API001",
+              "IAM002",
+              "SEC002",
+              "COST001",
+              "OBS001",
+          ]
           audit = post(
               "/api/audit",
               {

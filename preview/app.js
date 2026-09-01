@@ -1,24 +1,3 @@
-const sample = `AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
-Resources:
-  PublicApi:
-    Type: AWS::Serverless::HttpApi
-    Properties: {}
-  Worker:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.12
-      Handler: app.handler
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action: '*'
-              Resource: '*'
-      Environment:
-        Variables:
-          API_TOKEN: plaintext-demo-value
-`;
-
 const template = document.querySelector("#template");
 const source = document.querySelector("#source");
 const run = document.querySelector("#run");
@@ -38,9 +17,9 @@ const apiState = document.querySelector("#api-state");
 const fixtureCount = document.querySelector("#fixture-count");
 const activity = document.querySelector("#activity");
 const auditFlow = document.querySelector("#audit-flow");
+const reportContext = document.querySelector("#report-context");
 let demoRunning = false;
 
-template.value = sample;
 initializePreview();
 
 fileInput.addEventListener("change", async () => {
@@ -60,9 +39,16 @@ runDemo.addEventListener("click", runPortfolioDemo);
 
 async function initializePreview() {
   try {
-    const response = await fetch("/api/health", {cache: "no-store"});
-    const payload = await response.json();
-    if (!response.ok || payload.status !== "ok") throw new Error(payload.error || "Health check failed.");
+    const [healthResponse, demoResponse] = await Promise.all([
+      fetch("/api/health", {cache: "no-store"}),
+      fetch("/api/demo", {cache: "no-store"}),
+    ]);
+    const payload = await healthResponse.json();
+    const demo = await demoResponse.json();
+    if (!healthResponse.ok || payload.status !== "ok") throw new Error(payload.error || "Health check failed.");
+    if (!demoResponse.ok) throw new Error(demo.error || "Portfolio demo failed to load.");
+    template.value = demo.template;
+    source.value = demo.source;
     apiState.textContent = "CONNECTED";
     apiState.className = "connected";
     fixtureCount.textContent = String(payload.oracle_case_count);
@@ -87,7 +73,7 @@ async function runAudit() {
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Audit request failed.");
-    renderReport(payload);
+    renderReport(payload, "SUBMITTED TEMPLATE");
     auditFlow.dataset.state = "complete";
     activity.textContent = `Audit complete: ${payload.decision}, score ${payload.score}/100, ${payload.finding_count} findings.`;
     return true;
@@ -131,13 +117,30 @@ async function runOracleSuite() {
 async function runPortfolioDemo() {
   demoRunning = true;
   syncDemoButton();
-  template.value = sample;
-  source.value = "portfolio-demo.yaml";
-  const audited = await runAudit();
-  if (audited) await runOracleSuite();
-  document.querySelector("#results-heading").scrollIntoView({behavior: "smooth", block: "start"});
-  demoRunning = false;
-  syncDemoButton();
+  setBusy(true);
+  auditFlow.dataset.state = "running";
+  activity.textContent = "Loading the repository-owned demo input and report as one evidence set…";
+  try {
+    const response = await fetch("/api/demo", {cache: "no-store"});
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Portfolio demo failed to load.");
+    template.value = payload.template;
+    source.value = payload.source;
+    renderReport(payload.report, "SUBMITTED TEMPLATE");
+    auditFlow.dataset.state = "complete";
+    activity.textContent = `Audit complete: ${payload.report.decision}, score ${payload.report.score}/100, ${payload.report.finding_count} findings.`;
+    setBusy(false);
+    await runOracleSuite();
+    document.querySelector("#results-heading").scrollIntoView({behavior: "smooth", block: "start"});
+  } catch (requestError) {
+    showError(requestError.message);
+    auditFlow.dataset.state = "error";
+    activity.textContent = `Portfolio demo failed: ${requestError.message}`;
+  } finally {
+    setBusy(false);
+    demoRunning = false;
+    syncDemoButton();
+  }
 }
 
 function setBusy(isBusy) {
@@ -173,10 +176,11 @@ function showError(message) {
   status.className = "status fail";
 }
 
-function renderReport(data) {
+function renderReport(data, context) {
   error.classList.add("hidden");
   empty.classList.add("hidden");
   report.classList.remove("hidden");
+  reportContext.textContent = `${context} · ${data.source}`;
   document.querySelector("#decision").textContent = data.decision;
   document.querySelector("#score").textContent = data.score;
   document.querySelector("#count").textContent = data.finding_count;
@@ -269,7 +273,8 @@ function renderOracleSuite(data) {
     inspect.className = "inspect-button";
     inspect.textContent = "Inspect audit findings";
     inspect.addEventListener("click", () => {
-      renderReport(item.report);
+      renderReport(item.report, `ORACLE FIXTURE · ${item.case_id} · EDITOR INPUT UNCHANGED`);
+      activity.textContent = `Inspecting ${item.case_id} oracle evidence; the template editor remains unchanged.`;
       document.querySelector("#results-heading").scrollIntoView({behavior: "smooth", block: "start"});
     });
 

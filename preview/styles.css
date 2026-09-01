@@ -61,6 +61,7 @@ button:disabled { opacity: .65; cursor: wait; }
 .radar span { position: absolute; inset: 0 50% 50% 0; background: linear-gradient(35deg, transparent 45%, rgba(216,255,62,.8)); transform-origin: bottom right; animation: scan 2.5s linear infinite; }
 @keyframes scan { to { transform: rotate(360deg); } }
 .report { padding: 20px; }
+.report-context { margin: 0 0 12px; padding: 9px 11px; border-left: 4px solid var(--teal); background: #effaf5; color: var(--teal); font: 800 9px/1.5 ui-monospace, monospace; letter-spacing: .06em; overflow-wrap: anywhere; }
 .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .metrics article { min-width: 0; padding: 14px; background: var(--ink); color: white; }
 .metrics article > span { display: block; margin-bottom: 8px; color: #9aaba6; font: 700 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .1em; }

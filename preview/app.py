@@ -12,6 +12,8 @@ from audit.oracle import OracleDefinitionError, list_cases, run_suite
 
 ASSET_DIR = Path(__file__).parent
 CASE_ROOT = ASSET_DIR.parent / "task_cases"
+DEMO_TEMPLATE = ASSET_DIR / "demo" / "template.yaml"
+DEMO_SOURCE = "portfolio-demo.yaml"
 MAX_TEMPLATE_BYTES = 512 * 1024
 MAX_ORACLE_REQUEST_BYTES = 4096
 ASSETS = {
@@ -36,6 +38,16 @@ def audit_payload(payload: Any) -> dict[str, Any]:
     # Do not resolve DefinitionUri against repository files in the browser preview.
     isolated_base = ASSET_DIR / "no-external-definitions"
     return audit_text(template, source=source, base_dir=isolated_base)
+
+
+def demo_payload() -> dict[str, Any]:
+    """Return the repository-owned demo input and its report as one atomic payload."""
+    template = DEMO_TEMPLATE.read_text(encoding="utf-8")
+    return {
+        "source": DEMO_SOURCE,
+        "template": template,
+        "report": audit_payload({"source": DEMO_SOURCE, "template": template}),
+    }
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
@@ -73,6 +85,15 @@ class PreviewHandler(BaseHTTPRequestHandler):
                     "oracle_case_count": case_count,
                 },
             )
+            return
+        if self.path == "/api/demo":
+            try:
+                self._send_json(HTTPStatus.OK, demo_payload())
+            except OSError:
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"error": "repository-owned demo template is unavailable"},
+                )
             return
         if self.path == "/api/oracle/cases":
             try:

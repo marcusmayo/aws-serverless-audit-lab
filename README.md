@@ -4,6 +4,21 @@
 
 An evidence-first reference service for reviewing AWS serverless and Infrastructure-as-Code tasks. It evolves the API/data patterns in this portfolio's **Digital Value Chain** and the S3/report patterns in **Edenred Invoice Assistant**, then adds the failure handling, IAM boundaries, deterministic checks, and claim discipline expected of an AWS task auditor.
 
+## Verified browser preview
+
+![AWS Serverless Audit Lab browser preview with the T03 oracle fixture findings inspected and all three regression cases matched](docs/browser-preview.png)
+
+*Captured after **Run portfolio demo**, then **Inspect audit findings** on `T03_local_green_cloud_red`. The editor therefore retains `portfolio-demo.yaml` while the evidence pane shows the selected T03 report. The current UI labels this state `ORACLE FIXTURE … EDITOR INPUT UNCHANGED`; the portfolio-demo action now receives its own input and report atomically.*
+
+| Visible evidence | Expected contract | Screenshot result | Audit |
+|---|---|---|---|
+| Runtime | API connected; deterministic engine; 3 fixtures; static-only mode | Exact match | **MATCH** |
+| Selected T03 report | `FAIL`; `71/100`; `API001`, `COST001`, `OBS001` | Exact 3-finding match | **MATCH** |
+| Regression oracle | 3/3 cases; decision, required findings, forbidden IDs, and boundary match for every case | `MATCH`; 4/4 checks on each case | **MATCH** |
+| Claim boundary | Static `VERIFIED`; LocalStack IAM `UNVERIFIED`; real AWS `NOT_RUN` | Exact match | **MATCH** |
+
+The screenshot is SHA-256 pinned and its visible report/oracle values are re-evaluated in the test suite against [machine-readable screenshot evidence](docs/browser-preview-evidence.json). The editor's portfolio demo is a separate exact contract: `FAIL`, `16/100`, six findings. Its source and expected output live together under [`preview/demo`](preview/demo/expected.yaml). T03's oracle manifest requires its intended `API001` signal and permits additional findings; the screenshot contract additionally locks the visible `COST001` and `OBS001` findings and exact score/count.
+
 > **Evidence boundary:** the application and audit rules are validated locally through unit/static tests. LocalStack is an optional integration lane. IAM enforcement, managed-service retry timing, stream ordering, and other control-plane behavior remain **UNVERIFIED** until the real-AWS canary runs. No production-deployment claim is made.
 
 ## What this demonstrates

@@ -4,7 +4,7 @@
   "features": {
     "ghcr.io/customink/codespaces-features/aws-sam-cli:1": {}
   },
-  "postCreateCommand": "python -m pip install --requirement requirements-dev.txt",
+  "postCreateCommand": "VENV_DIR=.venv bash scripts/bootstrap_env.sh dev",
   "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {

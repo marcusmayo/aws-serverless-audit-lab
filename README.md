@@ -48,6 +48,8 @@ make audit
    make preview
    ```
 
+   `make preview` is self-bootstrapping: it creates an isolated `.venv` when needed and installs the pinned runtime dependency before starting the server. This also works in a Codespace that was created before the dev-container configuration was committed.
+
 4. When Codespaces reports that port `8000` is available, select **Open in Browser**. If the prompt is dismissed, open the **Ports** panel, find port `8000`, and select its globe icon.
 5. Paste or upload a SAM/CloudFormation YAML or JSON template and select **Run static audit**.
 6. Select **Run oracle suite** to compare all deliberately flawed fixtures with their strict, repository-owned expectations.
